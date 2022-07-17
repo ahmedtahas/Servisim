@@ -1,6 +1,7 @@
-const client = require("./db/db.js");
+
 const express = require("express");
 const port = process.env.PORT || "3444";
+const odbc = require('odbc');
 
 app = express();
 app.use(express.json());
@@ -10,23 +11,32 @@ app.listen(port, () => {
   console.log("Server listening at http://localhost:" + port);
 });
 
-client.connect();
+
+let db ;
+
+odbc.connect("DRIVER={PostgreSQL UNICODE};SERVER=localhost;UID=postgres;PWD=1234;DATABASE=servisim", (error, connection) => {
+  if(error) {
+    console.log(error);
+  } else {
+    db = connection;;
+  }
+});
 
 //param: pid,password,sid
 app.get("/checkCredentials", (req, res) => {
   const pid = req.query.pid;
   console.log(pid);
-  client.query(
+  db.query(
     'SELECT * FROM servisim."CREDENTIAL" AS x WHERE x."Pid" = ' +
       pid +
       'AND x."Sid" = ' +
       req.query.sid,
     (err, resQ) => {
       if (!err) {
-        if (resQ.rows.length == 0) {
+        if (resQ.length == 0) {
           res.send("0");
         } else {
-          const credential = resQ.rows[0];
+          const credential = resQ[0];
           console.log(credential);
           if (credential.Password == req.query.password) {
             console.log("doru");
@@ -51,13 +61,13 @@ app.get("/checkCredentials", (req, res) => {
 app.post("/deleteUser", (req, res) => {
   const pid = req.body.pid;
   const sid = req.body.sid;
-  client.query(
+  db.query(
     'DELETE FROM servisim."PERSON" WHERE "Pid" = ' + pid + 'AND "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -67,27 +77,29 @@ app.get("/getUsers", (req, res) => {
   const pid = req.query.pid;
   console.log(pid);
   if (!pid && !sid) {
-    client.query(
+    db.query(
       'SELECT y."Pid" ,y."Sid", x."Fname", x."Minit", x."Lname", y."RequestedNotificationSpan", y."Address" FROM servisim."PERSON" AS x INNER JOIN servisim."USER" AS y ON x."Pid" = y."Pid" AND x."Sid" = y."Sid"',
       (err, resQ) => {
         if (!err) {
-          res.send(resQ.rows);
+          const sliced = resQ.slice(0, resQ.length);
+          res.send(sliced);
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else {
-    client.query(
+    db.query(
       'SELECT y."Pid" ,y."Sid", x."Fname", x."Minit", x."Lname", y."RequestedNotificationSpan", y."Address" FROM servisim."PERSON" AS x INNER JOIN servisim."USER" AS y ON x."Pid" = y."Pid" AND x."Sid" = y."Sid" WHERE  y."Pid" = ' +
         pid +
         'AND y."Sid" = ' +
         sid,
       (err, resQ) => {
         if (!err) {
-          res.send(resQ.rows);
+          const sliced = resQ.slice(0, resQ.length);
+          res.send(sliced);
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
@@ -98,23 +110,25 @@ app.get("/getUsers", (req, res) => {
 app.get("/getSchools", (req, res) => {
   const sid = req.query.sid;
   if (!sid) {
-    client.query('SELECT * FROM servisim."SCHOOL"', (err, resQ) => {
+    db.query('SELECT * FROM servisim."SCHOOL"', (err, resQ) => {
       if (!err) {
-        res.send(resQ.rows);
+        const sliced = resQ.slice(0, resQ.length);
+        res.send(sliced);
         console.log("geldi");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
-      client.end;
+      db.end;
     });
   } else {
-    client.query(
+    db.query(
       'SELECT * FROM servisim."SCHOOL" WHERE  "Sid" = ' + sid,
       (err, resQ) => {
         if (!err) {
-          res.send(resQ.rows);
+          const sliced = resQ.slice(0, resQ.length);
+          res.send(sliced);
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
@@ -125,14 +139,14 @@ app.post("/addUser", (req, res) => {
   const info = req.body;
   console.log(info);
 
-  client.query(
+  db.query(
     'SELECT * FROM servisim."CREDENTIAL" WHERE "Pid" =' +
       info.pid +
       'AND "Sid" =' +
       info.sid,
     (err, resQ) => {
       if (!err) {
-        if (resQ.rows.length != 0) {
+        if (resQ.length != 0) {
           res.send("Bu id ile kullanici zaten var");
         } else {
           const name = info.name.split(" ");
@@ -144,7 +158,7 @@ app.post("/addUser", (req, res) => {
           if (name.length > 2) {
             minit = name[1][0];
           }
-          client.query(
+          db.query(
             'INSERT INTO servisim."PERSON"("Pid", "Fname", "Minit", "Lname", "Sid") VALUES (' +
               info.pid +
               ",'" +
@@ -160,7 +174,7 @@ app.post("/addUser", (req, res) => {
               if (!err) {
                 console.log("BBBBB");
                 if (info.type == "1") {
-                  client.query(
+                  db.query(
                     'INSERT INTO servisim."CREDENTIAL"("Pid", "Type", "Password", "Sid")VALUES (' +
                       info.pid +
                       ",'true','" +
@@ -170,7 +184,7 @@ app.post("/addUser", (req, res) => {
                       ")",
                     (err, resQ) => {
                       if (!err) {
-                        client.query(
+                        db.query(
                           'INSERT INTO servisim."ADMIN"("Pid", "Sid")VALUES (' +
                             info.pid +
                             "," +
@@ -178,20 +192,20 @@ app.post("/addUser", (req, res) => {
                             ")",
                           (err, resQ) => {
                             if (err) {
-                              res.send(err.message);
+                              res.send(err);
                             } else {
                               res.send("ok");
                             }
                           }
                         );
                       } else {
-                        res.send(err.message);
+                        res.send(err);
                       }
                     }
                   );
                 } else if (info.type == "0") {
                   console.log("kfmndkmfgfdmgd");
-                  client.query(
+                  db.query(
                     'INSERT INTO servisim."CREDENTIAL"("Pid", "Type", "Password", "Sid")VALUES (' +
                       info.pid +
                       ",'false','" +
@@ -202,7 +216,7 @@ app.post("/addUser", (req, res) => {
                     (err, resQ) => {
                       if (!err) {
                         console.log(info.address, info.sid);
-                        client.query(
+                        db.query(
                           'INSERT INTO servisim."USER"("Pid", "Address", "RequestedNotificationSpan", "Sid")VALUES (' +
                             info.pid +
                             ",'" +
@@ -212,78 +226,32 @@ app.post("/addUser", (req, res) => {
                             ")",
                           (err, resQ) => {
                             if (err) {
-                              res.send(err.message);
+                              res.send(err);
                             } else {
                               res.send("ok");
                             }
                           }
                         );
                       } else {
-                        res.send(err.message);
+                        res.send(err);
                       }
                     }
                   );
                 }
               } else {
-                res.send(err.message);
+                res.send(err);
               }
             }
           );
         }
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
 });
 
-app.post("/addSchool", (req, res) => {
-  const info = req.body;
-  client.query(
-    'INSERT INTO servisim."SCHOOL"("Sid", "Sname", "Address")VALUES (' +
-      info.sid +
-      ", '" +
-      info.sname +
-      "', '" +
-      info.saddress +
-      "')",
-    (err, resQ) => {
-      if (!err) {
-        client.query(
-          'INSERT INTO servisim."PLACE"("PlaceName")VALUES (' +
-            "'" +
-            info.sname +
-            "'",
-          (err, resQ) => {
-            if (!err) {
-              res.send("ok");
-            } else {
-              res.send(err.message);
-            }
-          }
-        );
-      } else {
-        res.send(err.message);
-      }
-    }
-  );
-});
 
-app.post("/addPlace", (req, res) => {
-  client.query(
-    'INSERT INTO servisim."PLACE"("PlaceName")VALUES (' +
-      "'" +
-      req.body.pname +
-      "'",
-    (err, resQ) => {
-      if (!err) {
-        res.send("ok");
-      } else {
-        res.send(err.message);
-      }
-    }
-  );
-});
 
 /*
 INSERT INTO servisim."TRANSPORT"(
@@ -296,50 +264,113 @@ INSERT INTO servisim."TRANSPORT"(
 app.get("/getPlacesBySid", (req, res) => {
   const sid = req.query.sid;
   let sname = "";
-  client.query(
+  
+  console.log(sid);
+  db.query(
     'SELECT foo."Sname" FROM servisim."SCHOOL" AS foo WHERE foo."Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
-        sname = resQ.rows[0].Sname;
-        client.query(
+        sname = resQ[0].Sname;
+        db.query(
           'SELECT foo."PlaceID"   FROM  servisim."PLACE" AS foo WHERE foo."PlaceName" = ' +
             "'" +
             sname +
             "'",
           (err, resQ) => {
-            console.log(resQ.rows.length);
             if (!err) {
-              if (resQ.rows.length == 0) {
-                console.log("QQQQQQ");
+              if (resQ.length == 0) {
                 return res.send([]);
               }
-              client.query(
+              db.query(
                 'SELECT foo."PlaceID", foo."PlaceName" FROM servisim."PLACE" AS foo INNER JOIN (SELECT DISTINCT x."From" FROM servisim."TRANSPORT" AS x WHERE x."Sid" =' +
                   sid +
                   'AND x."To" = ' +
-                  resQ.rows[0].PlaceID +
+                  resQ[0].PlaceID +
                   ') AS y ON y."From" = foo."PlaceID"',
                 (err, resQ) => {
                   if (!err) {
-                    res.send(resQ.rows);
+                    const sliced = resQ.slice(0, resQ.length);
+                    console.log(sliced);
+                    res.send(sliced);
                   } else {
-                    console.log("aaaa");
-                    res.send(err.message);
+                    res.send(err);
                   }
                 }
               );
             } else {
-              res.send(err.message);
+              res.send(err);
             }
           }
         );
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
 });
 
+//okul olmayan sisteme kayitli her yer
+app.get("/getPlaces", (req, res) => {
+              db.query(
+                'SELECT "PlaceID", "PlaceName" FROM servisim."PLACE" WHERE "isSchool" =' + "'false'",
+                (err, resQ) => {
+                  if (!err) {
+                    const sliced = resQ.slice(0, resQ.length);
+                    console.log(sliced);
+                    res.send(sliced);
+                  } else {
+                    res.send(err);
+                  }
+                }
+              );
+
+
+    }
+  );
+
+app.get("/getPlacesBySidWSchool", (req, res) => {
+  const sid = req.query.sid;
+  let sname = "";
+  console.log("getPlacesBySidWSchool", sid);
+  db.query(
+    'SELECT foo."Sname" FROM servisim."SCHOOL" AS foo WHERE foo."Sid" = ' + sid,
+    (err, resQ) => {
+      if (!err) {
+        
+        sname = resQ[0].Sname;
+        db.query(
+          'SELECT foo."PlaceID" FROM  servisim."PLACE" AS foo WHERE foo."PlaceName" = ' +
+            "'" +
+            sname +
+            "'",
+          (err, resQ) => {
+            if (!err) {
+              if (resQ.length == 0) {
+                return res.send([]);
+              }
+              db.query(
+                'SELECT * FROM servisim."PLACE" AS foo WHERE "isSchool" =' + "'false' OR" + ' foo."PlaceID" = ' + resQ[0].PlaceID,
+                (err, resQ) => {
+                  if (!err) {
+                    const sliced = resQ.slice(0, resQ.length);
+                    console.log(sliced);
+                    res.send(sliced);
+                  } else {
+                    res.send(err);
+                  }
+                }
+              );
+            } else {
+              res.send(err);
+            }
+          }
+        );
+      } else {
+        res.send(err);
+      }
+    }
+  );
+});
 //from: ogrencinin sectigi adres to:  okulu
 //param: pid,sid
 app.get("/getTransportsByPidSid", (req, res) => {
@@ -348,50 +379,51 @@ app.get("/getTransportsByPidSid", (req, res) => {
 
   let addressID;
 
-  client.query(
+  db.query(
     'SELECT * FROM servisim."USER" AS x WHERE x."Pid" = ' + pid,
     +'AND x."Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
-        addressID = resQ.rows[0].Address;
-        client.query(
+        addressID = resQ[0].Address;
+        db.query(
           'SELECT x."Sname" FROM servisim."SCHOOL" AS x WHERE x."Sid" = ' + sid,
           (err, resQ) => {
             if (!err) {
-              console.log(addressID, resQ.rows[0].Sname);
-              client.query(
+              console.log(addressID, resQ[0].Sname);
+              db.query(
                 'SELECT x."PlaceID" FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
                   "'" +
-                  resQ.rows[0].Sname +
+                  resQ[0].Sname +
                   "'",
                 (err, resQ) => {
                   if (!err) {
-                    let sPlaceID = resQ.rows[0].PlaceID;
-                    client.query(
+                    let sPlaceID = resQ[0].PlaceID;
+                    db.query(
                       'SELECT * FROM servisim."TRANSPORT" AS x WHERE x."From" = ' +
                         addressID +
                         ' AND x."To" = ' +
                         sPlaceID,
                       (err, resQ) => {
                         if (!err) {
-                          res.send(resQ.rows);
+                          const sliced = resQ.slice(0, resQ.length);
+                          res.send(sliced);
                         } else {
-                          res.send(err.message);
+                          res.send(err);
                         }
                       }
                     );
                   } else {
-                    res.send(err.message);
+                    res.send(err);
                   }
                 }
               );
             } else {
-              res.send(err.message);
+              res.send(err);
             }
           }
         );
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -402,11 +434,13 @@ app.get("/getTransportsByPidSid", (req, res) => {
 //param: sid
 app.get("/getAllTransportsBySid", (req, res) => {
   const sid = req.query.sid;
-  client.query(
-    'SELECT * FROM servisim."TRANSPORT" AS x WHERE x."Sid" = ' + sid,
+  console.log("getAllTransportsBySid",sid);
+  db.query(
+    'SELECT foo1."PhoneNumber", foo1."Plate", foo1."Time", foo1."Sid", foo1."Tid", foo1."From", foo2."PlaceName" AS "To", foo1."FromID", foo1."To" AS "ToID"FROM (SELECT x."PhoneNumber", x."Plate", x."Time", x."To", x."Sid", x."Tid", y."PlaceName" AS "From", x."From" AS "FromID" FROM servisim."TRANSPORT" AS x INNER JOIN servisim."PLACE" AS y ON x."From" = y."PlaceID") AS foo1 INNER JOIN servisim."PLACE" AS foo2 ON foo1."To" = foo2."PlaceID" WHERE foo1."Sid" =' + sid,
     (err, resQ) => {
       if (!err) {
-        res.send(resQ.rows);
+        const sliced = resQ.slice(0, resQ.length);
+        res.send(sliced);
       } else {
         res.send(err.message);
       }
@@ -418,7 +452,7 @@ app.get("/getAllTransportsBySid", (req, res) => {
 app.post("/addClass", (req, res) => {
   const info = req.body;
   console.log(info);
-  client.query(
+  db.query(
     'INSERT INTO servisim."CURRICULUM"("Pid", "DayOfWeek", "Time", "Lname", "Sid")VALUES (' +
       info.pid +
       "," +
@@ -436,7 +470,7 @@ app.post("/addClass", (req, res) => {
       if (!err) {
         res.send({ message: "200 OK" });
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -444,13 +478,13 @@ app.post("/addClass", (req, res) => {
 
 //param: lid- lesson id
 app.post("/deleteClass", (req, res) => {
-  client.query(
+  db.query(
     'DELETE FROM servisim."CURRICULUM" AS x WHERE x."Lid" =' + req.query.lid,
     (err, resQ) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -460,7 +494,7 @@ app.post("/deleteClass", (req, res) => {
 app.post("/updateClass", (req, res) => {
   const info = req.body;
   if (info.lname && info.day && info.hour && info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "DayOfWeek" = ' +
         info.day +
         ', "Time" = ' +
@@ -479,12 +513,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (!info.lname && info.day && info.hour && info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "DayOfWeek" = ' +
         info.day +
         ', "Time" = ' +
@@ -499,12 +533,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (info.lname && !info.day && info.hour && info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "Time" = ' +
         "'" +
         info.hour +
@@ -521,12 +555,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (info.lname && info.day && !info.hour && !info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "DayOfWeek" = ' +
         info.day +
         ', "Lname" = ' +
@@ -539,12 +573,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (!info.lname && !info.day && info.hour && info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "Time" = ' +
         "'" +
         info.hour +
@@ -557,12 +591,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (!info.lname && info.day && !info.hour && !info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "DayOfWeek" = ' +
         info.day +
         ' WHERE "Lid" = ' +
@@ -571,12 +605,12 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
   } else if (info.lname && !info.day && !info.hour && !info.minutes) {
-    client.query(
+    db.query(
       'UPDATE servisim."CURRICULUM" SET "Lname" = ' +
         "'" +
         info.lname +
@@ -587,7 +621,7 @@ app.post("/updateClass", (req, res) => {
         if (!err) {
           res.send("ok");
         } else {
-          res.send(err.message);
+          res.send(err);
         }
       }
     );
@@ -598,16 +632,17 @@ app.post("/updateClass", (req, res) => {
 app.get("/getClassesByPidSid", (req, res) => {
   const pid = req.query.pid;
   const sid = req.query.sid;
-  client.query(
+  db.query(
     'SELECT * FROM servisim."CURRICULUM" AS x WHERE x."Pid" = ' +
       pid +
       ' AND x."Sid" = ' +
       sid,
     (err, resQ) => {
       if (!err) {
-        res.send(resQ.rows);
+        const sliced = resQ.slice(0, resQ.length);
+        res.send(sliced);
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -616,7 +651,7 @@ app.get("/getClassesByPidSid", (req, res) => {
 //pid, ntfSpanTime, sid
 app.post("/updateNtfSpanTime", (req, res) => {
   const info = req.body;
-  client.query(
+  db.query(
     'UPDATE servisim."USER" AS x SET x."RequestedNotificationSpan" = ' +
       info.ntfSpanTime +
       ' WHERE x."Pid" = ' +
@@ -627,7 +662,7 @@ app.post("/updateNtfSpanTime", (req, res) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -636,7 +671,7 @@ app.post("/updateNtfSpanTime", (req, res) => {
 //pid, address,sid
 app.post("/updateAddress", (req, res) => {
   const info = req.body;
-  client.query(
+  db.query(
     'UPDATE servisim."USER" AS x SET x."Address" = ' +
       info.address +
       ' WHERE x."Pid" = ' +
@@ -647,7 +682,7 @@ app.post("/updateAddress", (req, res) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -656,17 +691,17 @@ app.post("/updateAddress", (req, res) => {
 //pid, newPassword,sid
 app.post("/updatePassword", (req, res) => {
   const info = req.body;
-  client.query(
+  db.query(
     'SELECT x."Password" FROM servisim."CREDENTIAL" AS x WHERE x."Pid" = ' +
       info.pid +
       ' AND x."Sid" = ' +
       info.sid,
     (err, resQ) => {
       if (!err) {
-        if (resQ.rows[0].Password == info.newPassword) {
+        if (resQ[0].Password == info.newPassword) {
           res.send("0"); //aynı şifre
         } else {
-          client.query(
+          db.query(
             'UPDATE servisim."CREDENTIAL" AS x SET x."Password" = ' +
               "'" +
               info.newPassword +
@@ -679,13 +714,13 @@ app.post("/updatePassword", (req, res) => {
               if (!err) {
                 res.send("ok");
               } else {
-                res.send(err.message);
+                res.send(err);
               }
             }
           );
         }
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -696,7 +731,7 @@ app.post("/updatePassword", (req, res) => {
 //buradaki sid sectirilmeyecek, adminin kaydolurken sectigi sidyi alacak
 app.post("/addTransport", (req, res) => {
   const info = req.body;
-  client.query(
+  db.query(
     'INSERT INTO servisim."TRANSPORT"( "Plate", "Time", "From", "To", "PhoneNumber", "Sid")VALUES (' +
       "'" +
       info.plate +
@@ -717,20 +752,20 @@ app.post("/addTransport", (req, res) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
 });
 
 app.post("/deleteTransport", (req, res) => {
-  client.query(
+  db.query(
     'DELETE FROM servisim."TRANSPORT" AS x WHERE x."Tid" =' + req.query.tid,
     (err, resQ) => {
       if (!err) {
         res.send("ok");
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
@@ -738,23 +773,23 @@ app.post("/deleteTransport", (req, res) => {
 
 app.post("/addPlace", (req, res) => {
   const info = req.body;
-  client.query(
+  db.query(
     'SELECT * FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
       "'" +
       info.placename +
       "'",
     (err, resQ) => {
       if (!err) {
-        if (resQ.rows.length == 0) {
-          client.query(
-            'INSERT INTO servisim."PLACE"( "PlaceName")VALUES (' +
+        if (resQ.length == 0) {
+          db.query(
+            'INSERT INTO servisim."PLACE"( "PlaceName", "isSchool")VALUES (' +
               info.placename +
-              ")",
+              ", 'false')",
             (err, resQ) => {
               if (!err) {
                 res.send("ok");
               } else {
-                res.send(err.message);
+                res.send(err);
               }
             }
           );
@@ -762,8 +797,41 @@ app.post("/addPlace", (req, res) => {
           res.send("Boyle bir yer zaten bulunmakta");
         }
       } else {
-        res.send(err.message);
+        res.send(err);
       }
     }
   );
 });
+
+app.post("/addSchool", (req, res) => {
+  const info = req.body;
+  db.query(
+    'INSERT INTO servisim."SCHOOL"("Sid", "Sname", "Address")VALUES (' +
+      info.sid +
+      ", '" +
+      info.sname +
+      "', '" +
+      info.saddress +
+      "')",
+    (err, resQ) => {
+      if (!err) {
+        db.query(
+          'INSERT INTO servisim."PLACE"("PlaceName", "isSchool")VALUES (' +
+            "'" +
+            info.sname +
+            "', 'true')",
+          (err, resQ) => {
+            if (!err) {
+              res.send("ok");
+            } else {
+              res.send(err);
+            }
+          }
+        );
+      } else {
+        res.send(err);
+      }
+    }
+  );
+});
+
