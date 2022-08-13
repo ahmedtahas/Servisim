@@ -148,6 +148,7 @@ function Curriculum(props) {
     })
       .then((response) => response.json())
       .then((json) => {
+        console.log(json);
         alert("successfully added");
         getClasses();
       })

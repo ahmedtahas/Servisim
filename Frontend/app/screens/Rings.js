@@ -19,6 +19,7 @@ function Rings(props) {
   const [place, setPlace] = useState(null);
   const [stop, setStop] = useState(null);
   const [stopID, setStopID] = useState(null);
+  const [filtered, setFiltered] = useState(false);
 
   useEffect(() => {
     getData("sid").then((value) => {
@@ -60,6 +61,7 @@ function Rings(props) {
   }, [sid]);
 
   const handleFilter = () => {
+    setFiltered(true);
     console.log(sid, stop, "AAAA");
     if (from) {
       fetch(
@@ -112,6 +114,8 @@ function Rings(props) {
 
   const handleRings = (json) => {
     let rings = [];
+    console.log(json);
+
     json.map((ring) => {
       rings.push({
         label: {
@@ -125,6 +129,10 @@ function Rings(props) {
       });
     });
     setRings(rings);
+    console.log(rings, "RINGS");
+    if (rings.length === 0) {
+      setRings([{ label: "No rings", value: null }]);
+    }
   };
 
   const handleStop = (text) => {
@@ -193,6 +201,11 @@ function Rings(props) {
         <ScrollView
           style={{ flex: 1, backgroundColor: colors.tertiary, width: "100%" }}
         >
+          {!filtered && (
+            <View style={styles.header}>
+              <Text style={styles.headerText}>All Rings</Text>
+            </View>
+          )}
           {rings.map((ring) => {
             return (
               <TouchableOpacity
@@ -297,6 +310,22 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 10,
     alignItems: "center",
+  },
+  header: {
+    flex: 1,
+    backgroundColor: colors.tertiary,
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    padding: 10,
+    margin: 10,
+  },
+  headerText: {
+    fontSize: 25,
+    fontStyle: "bold",
+    fontFamily: "sans-serif-condensed",
+    color: colors.darkgray,
   },
 });
 

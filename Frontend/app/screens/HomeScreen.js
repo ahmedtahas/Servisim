@@ -9,7 +9,7 @@ import Feather from "react-native-vector-icons/Feather";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 function HomeScreen(props) {
-  const [upcoming, setUpcoming] = useState(false);
+  const [upcoming, setUpcoming] = useState(true);
   const [curriculum, setCurriculum] = useState(false);
   const [rings, setRings] = useState(false);
 
