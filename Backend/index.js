@@ -27,9 +27,9 @@ app.get("/checkCredentials", (req, res) => {
   const pid = req.query.pid;
   console.log(pid);
   db.query(
-    'SELECT * FROM servisim."CREDENTIAL" AS x WHERE x."Pid" = ' +
+    'SELECT * FROM servisim."CREDENTIAL" WHERE "Pid" = ' +
       pid +
-      'AND x."Sid" = ' +
+      'AND "Sid" = ' +
       req.query.sid,
     (err, resQ) => {
       if (!err) {
@@ -39,15 +39,13 @@ app.get("/checkCredentials", (req, res) => {
           const credential = resQ[0];
           console.log(credential);
           if (credential.Password == req.query.password) {
-            console.log("doru");
             if (credential.Type == true) {
-              console.log("dddd");
               res.send("1");
             } else if (credential.Type == false) {
-              console.log("xxx");
               res.send("2");
             }
           } else {
+            console.log(credential.Password , req.query.password);
             res.send("3");
           }
         }
@@ -75,6 +73,7 @@ app.post("/deleteUser", (req, res) => {
 //http://localhost:3044/getUsers?pid=181101020&sid=1
 app.get("/getUsers", (req, res) => {
   const pid = req.query.pid;
+  const sid = req.query.sid;
   console.log(pid);
   if (!pid && !sid) {
     db.query(
@@ -114,7 +113,6 @@ app.get("/getSchools", (req, res) => {
       if (!err) {
         const sliced = resQ.slice(0, resQ.length);
         res.send(sliced);
-        console.log("geldi");
       } else {
         res.send(err);
       }
@@ -172,7 +170,6 @@ app.post("/addUser", (req, res) => {
               ")",
             (err, resQ) => {
               if (!err) {
-                console.log("BBBBB");
                 if (info.type == "1") {
                   db.query(
                     'INSERT INTO servisim."CREDENTIAL"("Pid", "Type", "Password", "Sid")VALUES (' +
@@ -204,7 +201,6 @@ app.post("/addUser", (req, res) => {
                     }
                   );
                 } else if (info.type == "0") {
-                  console.log("kfmndkmfgfdmgd");
                   db.query(
                     'INSERT INTO servisim."CREDENTIAL"("Pid", "Type", "Password", "Sid")VALUES (' +
                       info.pid +
@@ -251,14 +247,6 @@ app.post("/addUser", (req, res) => {
   );
 });
 
-
-
-/*
-INSERT INTO servisim."TRANSPORT"(
-	"Plate", "Time", "From", "To", "PhoneNumber", "Sid")
-	VALUES ('10DJ33', '12:00', 1, 2, 05645734);
-*/
-
 //ogrenci kaydolurken servis binecegi yeri sececek
 //param:sid
 app.get("/getPlacesBySid", (req, res) => {
@@ -267,12 +255,12 @@ app.get("/getPlacesBySid", (req, res) => {
   
   console.log(sid);
   db.query(
-    'SELECT foo."Sname" FROM servisim."SCHOOL" AS foo WHERE foo."Sid" = ' + sid,
+    'SELECT "Sname" FROM servisim."SCHOOL"  WHERE "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         sname = resQ[0].Sname;
         db.query(
-          'SELECT foo."PlaceID"   FROM  servisim."PLACE" AS foo WHERE foo."PlaceName" = ' +
+          'SELECT "PlaceID"   FROM  servisim."PLACE"  WHERE "PlaceName" = ' +
             "'" +
             sname +
             "'",
@@ -311,35 +299,32 @@ app.get("/getPlacesBySid", (req, res) => {
 
 //okul olmayan sisteme kayitli her yer
 app.get("/getPlaces", (req, res) => {
-              db.query(
-                'SELECT "PlaceID", "PlaceName" FROM servisim."PLACE" WHERE "isSchool" =' + "'false'",
-                (err, resQ) => {
-                  if (!err) {
-                    const sliced = resQ.slice(0, resQ.length);
-                    console.log(sliced);
-                    res.send(sliced);
-                  } else {
-                    res.send(err);
-                  }
-                }
-              );
-
-
+  console.log("getPlaces");
+  db.query(
+    'SELECT "PlaceID", "PlaceName" FROM servisim."PLACE" WHERE "isSchool" =' + "'false'",
+    (err, resQ) => {
+      if (!err) {
+        const sliced = resQ.slice(0, resQ.length);
+        res.send(sliced);
+      } else {
+        res.send(err);
+      }
     }
   );
+});
 
 app.get("/getPlacesBySidWSchool", (req, res) => {
   const sid = req.query.sid;
   let sname = "";
   console.log("getPlacesBySidWSchool", sid);
   db.query(
-    'SELECT foo."Sname" FROM servisim."SCHOOL" AS foo WHERE foo."Sid" = ' + sid,
+    'SELECT "Sname" FROM servisim."SCHOOL"  WHERE "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         
         sname = resQ[0].Sname;
         db.query(
-          'SELECT foo."PlaceID" FROM  servisim."PLACE" AS foo WHERE foo."PlaceName" = ' +
+          'SELECT "PlaceID" FROM  servisim."PLACE"  WHERE "PlaceName" = ' +
             "'" +
             sname +
             "'",
@@ -349,7 +334,7 @@ app.get("/getPlacesBySidWSchool", (req, res) => {
                 return res.send([]);
               }
               db.query(
-                'SELECT * FROM servisim."PLACE" AS foo WHERE "isSchool" =' + "'false' OR" + ' foo."PlaceID" = ' + resQ[0].PlaceID,
+                'SELECT * FROM servisim."PLACE" WHERE "isSchool" =' + "'false' OR" + ' "PlaceID" = ' + resQ[0].PlaceID,
                 (err, resQ) => {
                   if (!err) {
                     const sliced = resQ.slice(0, resQ.length);
@@ -371,27 +356,28 @@ app.get("/getPlacesBySidWSchool", (req, res) => {
     }
   );
 });
+
 //from: ogrencinin sectigi adres to:  okulu
 //param: pid,sid
 app.get("/getTransportsByPidSid", (req, res) => {
   const pid = req.query.pid;
   const sid = req.query.sid;
-
+  console.log("getTransportsByPidSid", pid, sid);
   let addressID;
 
   db.query(
-    'SELECT * FROM servisim."USER" AS x WHERE x."Pid" = ' + pid,
-    +'AND x."Sid" = ' + sid,
+    'SELECT * FROM servisim."USER" WHERE "Pid" = ' + pid
+    +'AND "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         addressID = resQ[0].Address;
         db.query(
-          'SELECT x."Sname" FROM servisim."SCHOOL" AS x WHERE x."Sid" = ' + sid,
+          'SELECT "Sname" FROM servisim."SCHOOL" WHERE "Sid" = ' + sid,
           (err, resQ) => {
             if (!err) {
               console.log(addressID, resQ[0].Sname);
               db.query(
-                'SELECT x."PlaceID" FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
+                'SELECT "PlaceID" FROM servisim."PLACE" WHERE "PlaceName" = ' +
                   "'" +
                   resQ[0].Sname +
                   "'",
@@ -399,9 +385,9 @@ app.get("/getTransportsByPidSid", (req, res) => {
                   if (!err) {
                     let sPlaceID = resQ[0].PlaceID;
                     db.query(
-                      'SELECT * FROM servisim."TRANSPORT" AS x WHERE x."From" = ' +
+                      'SELECT "Plate", "Time", "PhoneNumber" FROM servisim."TRANSPORT"  WHERE "From" = ' +
                         addressID +
-                        ' AND x."To" = ' +
+                        ' AND "To" = ' +
                         sPlaceID,
                       (err, resQ) => {
                         if (!err) {
@@ -434,12 +420,12 @@ app.get("/getTransportsFromSchool", (req, res) => {
   const placeID = req.query.placeID;
 
   db.query(
-    'SELECT "Sname" FROM servisim."SCHOOL" AS x WHERE x."Sid" = ' + sid,
+    'SELECT "Sname" FROM servisim."SCHOOL"  WHERE "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         const sname = resQ[0].Sname;
         db.query(
-          'SELECT x."PlaceID" FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
+          'SELECT "PlaceID" FROM servisim."PLACE"  WHERE "PlaceName" = ' +
             "'" +
             sname +
             "'",
@@ -471,12 +457,12 @@ app.get("/getTransportsToSchool", (req, res) => {
   const placeID = req.query.placeID;
 
   db.query(
-    'SELECT "Sname" FROM servisim."SCHOOL" AS x WHERE x."Sid" = ' + sid,
+    'SELECT "Sname" FROM servisim."SCHOOL"  WHERE "Sid" = ' + sid,
     (err, resQ) => {
       if (!err) {
         const sname = resQ[0].Sname;
         db.query(
-          'SELECT x."PlaceID" FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
+          'SELECT x."PlaceID" FROM servisim."PLACE" WHERE "PlaceName" = ' +
             "'" +
             sname +
             "'",
@@ -523,7 +509,7 @@ app.get("/getAllTransportsBySid", (req, res) => {
   );
 });
 
-//pid, day: number 1-7, hour, minutes, lname:lessonname
+//pid, day: number 0-6, hour, minutes, lname:lessonname
 app.post("/addClass", (req, res) => {
   const info = req.body;
   console.log(info);
@@ -711,7 +697,7 @@ app.get("/getClassesByPidSid", (req, res) => {
     'SELECT * FROM servisim."CURRICULUM" AS x WHERE x."Pid" = ' +
       pid +
       ' AND x."Sid" = ' +
-      sid,
+      sid + ' ORDER BY x."DayOfWeek" ASC, x."Time" ASC',
     (err, resQ) => {
       if (!err) {
         const sliced = resQ.slice(0, resQ.length);
@@ -722,6 +708,25 @@ app.get("/getClassesByPidSid", (req, res) => {
     }
   );
 });
+
+app.get("/getClassesByDay", (req, res) => {
+  const info = req.query;
+  console.log(info);
+  
+  db.query(
+    'SELECT * FROM servisim."CURRICULUM" WHERE "DayOfWeek" = ' +
+      info.day + ' AND "Pid" = ' + info.pid
+      + ' AND "Sid" = ' + info.sid + 'AND "Time" >'+ "'" + info.time + "'" +'ORDER BY "Time"',
+    (err, resQ) => {
+      if (!err) {
+        const sliced = resQ.slice(0, resQ.length);
+        res.send(sliced);
+      } else {
+        res.send(err);
+      }
+    });
+}
+);
 
 //pid, ntf, sid
 app.post("/updateNtfSpan", (req, res) => {
@@ -743,15 +748,16 @@ app.post("/updateNtfSpan", (req, res) => {
   );
 });
 
-//pid, address,sid
+//pid, newAddress,sid
 app.post("/updateAddress", (req, res) => {
   const info = req.body;
+  console.log("updateAddress",info);
   db.query(
-    'UPDATE servisim."USER" AS x SET x."Address" = ' +
-      info.address +
-      ' WHERE x."Pid" = ' +
+    'UPDATE servisim."USER"  SET "Address" = ' +
+      info.newAddress +
+      ' WHERE "Pid" = ' +
       info.pid +
-      ' AND x."Sid" = ' +
+      ' AND "Sid" = ' +
       info.sid,
     (err, resQ) => {
       if (!err) {
@@ -774,16 +780,16 @@ app.post("/updatePassword", (req, res) => {
     (err, resQ) => {
       if (!err) {
         if (resQ[0].Password == info.newPassword) {
-          res.send("0"); //aynı şifre
+          res.send({res:"0"}); //aynı şifre
         } else {
           db.query(
-            'UPDATE servisim."CREDENTIAL" AS x SET x."Password" = ' +
+            'UPDATE servisim."CREDENTIAL"  SET "Password" = ' +
               "'" +
               info.newPassword +
               "'" +
-              ' WHERE x."Pid" = ' +
+              ' WHERE "Pid" = ' +
               info.pid +
-              ' AND x."Sid" = ' +
+              ' AND "Sid" = ' +
               info.sid,
             (err, resQ) => {
               if (!err) {
@@ -849,7 +855,7 @@ app.post("/deleteTransport", (req, res) => {
 app.post("/addPlace", (req, res) => {
   const info = req.body;
   db.query(
-    'SELECT * FROM servisim."PLACE" AS x WHERE x."PlaceName" = ' +
+    'SELECT * FROM servisim."PLACE" WHERE "PlaceName" = ' +
       "'" +
       info.placename +
       "'",
@@ -858,8 +864,8 @@ app.post("/addPlace", (req, res) => {
         if (resQ.length == 0) {
           db.query(
             'INSERT INTO servisim."PLACE"( "PlaceName", "isSchool")VALUES (' +
-              info.placename +
-              ", 'false')",
+              "'" +info.placename +
+              "', 'false')",
             (err, resQ) => {
               if (!err) {
                 res.send({res:"ok"});
