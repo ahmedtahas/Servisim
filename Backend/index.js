@@ -90,10 +90,11 @@ app.get("/getUsers", (req, res) => {
     );
   } else {
     db.query(
-      'SELECT y."Pid" ,y."Sid", x."Fname", x."Minit", x."Lname", y."RequestedNotificationSpan", y."Address" FROM servisim."PERSON" AS x INNER JOIN servisim."USER" AS y ON x."Pid" = y."Pid" AND x."Sid" = y."Sid" WHERE  y."Pid" = ' +
+      'SELECT * FROM servisim."PLACE" INNER JOIN (SELECT y."Pid" ,y."Sid", x."Fname", x."Minit", x."Lname", y."RequestedNotificationSpan", y."Address" FROM servisim."PERSON" AS x INNER JOIN servisim."USER" AS y ON x."Pid" = y."Pid" AND x."Sid" = y."Sid" WHERE  y."Pid" = ' +
         pid +
         'AND y."Sid" = ' +
-        sid,
+        sid +
+        ') AS z ON "PlaceID" = z."Address"',
       (err, resQ) => {
         if (!err) {
           const sliced = resQ.slice(0, resQ.length);
@@ -840,7 +841,7 @@ app.post("/addTransport", (req, res) => {
   db.query(
     'INSERT INTO servisim."TRANSPORT"( "Plate", "Time", "From", "To", "PhoneNumber", "Sid")VALUES (' +
       "'" +
-      info.plate +
+      info.plate.trim() +
       "', '" +
       info.hour +
       ":" +
@@ -935,6 +936,22 @@ app.post("/addSchool", (req, res) => {
             }
           }
         );
+      } else {
+        res.send(err);
+      }
+    }
+  );
+});
+
+app.get("/getPasswordByPidSid", (req, res) => {
+  db.query(
+    'SELECT x."Password" FROM servisim."CREDENTIAL" AS x WHERE x."Pid" = ' +
+      req.query.pid +
+      ' AND x."Sid" = ' +
+      req.query.sid,
+    (err, resQ) => {
+      if (!err) {
+        res.send({ password: resQ[0].Password });
       } else {
         res.send(err);
       }

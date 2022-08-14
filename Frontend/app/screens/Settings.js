@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Text,
   TextInput,
+  Alert,
 } from "react-native";
 import colors from "../config/colors";
 import { AuthContext } from "../config/AuthContext.js";
@@ -13,6 +14,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import server from "../config/server.js";
 
 function Settings(props) {
+  const [info, setInfo] = useState(null);
+
   const { signOut } = useContext(AuthContext);
   const getData = async (key) => {
     try {
@@ -76,8 +79,21 @@ function Settings(props) {
   useEffect(() => {
     if (pid !== null && sid !== null) {
       handleNotificationTimeSpan();
+      fetch("http://" + server.server + "/getUsers?pid=" + pid + "&sid=" + sid)
+        .then((response) => response.json())
+        .then((json) => {
+          handleUser(json);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
     }
   }, [pid, sid]);
+
+  const handleUser = (json) => {
+    console.log(json[0]);
+    setInfo(json[0]);
+  };
 
   useEffect(() => {
     getData("pid").then((value) => {
@@ -123,6 +139,25 @@ function Settings(props) {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.ireMbutton}
+        onPress={() => {
+          Alert.alert(
+            "Info",
+            info.Fname +
+              " " +
+              info.Minit +
+              " " +
+              info.Lname +
+              "\n" +
+              info.Pid +
+              "\n" +
+              info.PlaceName
+          );
+        }}
+      >
+        <Text style={styles.buttonText}>My Info</Text>
+      </TouchableOpacity>
       <Text>Requested Notification Time</Text>
       {!!span && (
         <TextInput
@@ -216,8 +251,6 @@ function Settings(props) {
       >
         <Text style={styles.buttonText}>Sign Out</Text>
       </TouchableOpacity>
-
-      <Text>Settings</Text>
     </View>
   );
 }
@@ -253,6 +286,12 @@ const styles = StyleSheet.create({
     width: 200,
     height: 50,
     backgroundColor: colors.white,
+    margin: 10,
+    borderRadius: 10,
+  },
+  ireMbutton: {
+    backgroundColor: colors.irem,
+    padding: 10,
     margin: 10,
     borderRadius: 10,
   },

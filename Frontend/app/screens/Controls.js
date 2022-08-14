@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  Alert,
 } from "react-native";
 import { AuthContext } from "../config/AuthContext.js";
 import { useEffect } from "react";
@@ -12,6 +13,7 @@ import { useState } from "react";
 import { useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import colors from "../config/colors.js";
+import server from "../config/server.js";
 
 function Controls(props) {
   const { signOut } = useContext(AuthContext);
@@ -35,7 +37,7 @@ function Controls(props) {
 
   const [sid, setSid] = useState("");
   const [studentID, setStudentID] = useState("");
-  
+
   return (
     <View style={styles.container}>
       <View style={styles.student}>
@@ -45,7 +47,31 @@ function Controls(props) {
           onChangeText={(text) => setStudentID(text)}
           value={studentID}
         />
-        <TouchableOpacity style={styles.button} onPress={() => {}}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => {
+            fetch(
+              "http://" +
+                server.server +
+                "/getPasswordByPidSid?sid=" +
+                sid +
+                "&pid=" +
+                studentID
+            )
+              .then((response) => response.json())
+              .then((json) => {
+                console.log(json, "json");
+                if (json.password === "") {
+                  Alert.alert("Student ID not found");
+                } else {
+                  Alert.alert("Password: " + json.password);
+                }
+              })
+              .catch((error) => {
+                console.error(error);
+              });
+          }}
+        >
           <Text style={styles.buttonText}>Get Password</Text>
         </TouchableOpacity>
       </View>
@@ -76,6 +102,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     height: "10%",
+    flex: 1,
     backgroundColor: colors.background,
   },
   button: {
@@ -107,6 +134,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     height: "10%",
+    flex: 1,
     backgroundColor: colors.background,
   },
 });

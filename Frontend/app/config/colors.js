@@ -5,4 +5,5 @@ export default {
   darkgray: "#131313",
   lightgray: "#f3f3f3",
   white: "#ededed",
+  irem: "#5e0fb8",
 };

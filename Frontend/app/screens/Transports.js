@@ -52,6 +52,7 @@ function Transports(props) {
     })
       .then((response) => response.json())
       .then((json) => {
+        console.log(json, "jsonBBBBB");
         handleTransports(json);
       })
       .catch((error) => {
@@ -65,6 +66,7 @@ function Transports(props) {
     })
       .then((response) => response.json())
       .then((json) => {
+        console.log(json, "jsonCCCCC");
         handleDestinations(json);
       })
       .catch((error) => {
@@ -84,6 +86,7 @@ function Transports(props) {
     )
       .then((response) => response.json())
       .then((json) => {
+        console.log(json, "jsonAAAAAA");
         handleTransports(json);
       })
       .catch((error) => {
